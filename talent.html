@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ваш главный талант · Сфера таланта</title>
+<meta name="description" content="Ваш главный талант по дате рождения и персональная карта реализации за 990 ₽.">
+<meta name="theme-color" content="#fbf5ea">
+<script>
+  /* Тема оформления. Основная: sage (сливки + шалфей + золото). ?theme=1 сливки + кофе, ?theme=0 оливковая, ?theme=2 изумруд, ?theme=3 лимон. */
+  (function () {
+    var t = (new URLSearchParams(location.search).get("theme") || "").trim();
+    if (!/^([0123]|sage)$/.test(t)) t = "sage";
+    if (t === "sage") { document.documentElement.setAttribute("data-theme", "1"); document.documentElement.setAttribute("data-dark", "sage"); }
+    else if (t !== "0") document.documentElement.setAttribute("data-theme", t);
+    window.SITE_THEME = t;
+  })();
+</script>
+<script>
+  /* =====================================================================
+     1) ТЕКСТЫ ТАЛАНТОВ (тексты Ланы). Ключ = месяц рождения (январь = #1 ... декабрь = #12).
+        title: заголовок «Ваш главный талант — ...», paras: абзацы по порядку.
+        Структура: заголовок, сила, «Вам подходят: ...» (мягкая плашка), «Но есть ловушка. ...»,
+        «Дело не в ...» (открытая петля), финальная строка про полную карту (над кнопкой).
+        Исходные тексты Ланы: site-texts/talents.txt, текущие: site-texts/talents-v2.txt.
+        Последний абзац (про полную карту) стоит прямо над кнопкой.
+     ===================================================================== */
+  const TALENTS = {
+    1: { title: "Ваш главный талант — создавать новое",
+         paras: [
+           "Вы превращаете идеи в действие. Быстро видите возможности, находите людей и решения и запускаете то, чего еще не было. А когда рассказываете о своей идее, вокруг нее начинается движение",
+           "Вам подходят: предпринимательство, продажи, маркетинг, продюсирование, контент, авторские проекты и запуск новых продуктов",
+           "Но есть ловушка. Новая идея всегда ярче начатой, и Вы переключаетесь раньше, чем приходят деньги. Идей все больше, а оплаченных результатов все меньше",
+           "Дело не в дисциплине. У Вашего таланта есть свой переключатель, и пока он не включен, касса остается пустой",
+           "Где именно Ваши деньги и как довести идею до дохода, Вы увидите в полной карте" ] },
+    2: { title: "Ваш главный талант — видеть то, что скрыто",
+         paras: [
+           "Вы располагаете к себе одним присутствием и замечаете то, что другие пропускают. Рядом с Вами люди начинают говорить больше, чем собирались, а Вы видите суть их проблемы раньше, чем они сами ее сформулируют",
+           "Вам подходят: психология, аналитика, исследования, индивидуальное консультирование, HR, тексты и редактура, разборы",
+           "Но есть ловушка. Вы так точно понимаете, что происходит, и так щедро выстраиваете план, что человек уходит с Вашим решением, а Вы остаетесь без оплаты. Ваш дар легко принять за скромность или нежелание навязываться",
+           "Дело не в скромности. Глубину можно предъявить и упаковать, и у Вашего таланта для этого есть свой ключ",
+           "Как превратить способность видеть глубже других в то, за что платят, Вы увидите в полной карте" ] },
+    3: { title: "Ваш главный талант — создавать и приумножать",
+         paras: [
+           "Вы делаете пространство, идею или проект привлекательнее и ценнее, чувствуете эстетику и детали, которые заставляют выбрать. И Вы умеете выращивать то, к чему прикасаетесь: продукт, аудиторию, отношения с клиентами",
+           "Вам подходят: дизайн, индустрия красоты, мода, создание контента, маркетинг, развитие брендов, личный бренд и упаковка",
+           "Но есть ловушка. То, что дается Вам легко, Вы не считаете отдельной ценностью и даете больше, чем просили. А потом обнаруживаете, что заботы стало много, а денег за нее почему-то нет",
+           "Дело не в доброте и не в нелюбви к продажам. Есть граница между тем, что Вы отдаете от сердца, и тем, за что рынок готов платить, и она проходит в конкретном месте",
+           "Где проходит эта граница и где именно Ваши деньги, Вы увидите в полной карте" ] },
+    4: { title: "Ваш главный талант — управлять и создавать порядок",
+         paras: [
+           "Вы наводите порядок там, где другие видят хаос. Распределяете задачи и выстраиваете правила так, чтобы система жила не один день, и не боитесь отвечать за итог. На Вас можно опереться",
+           "Вам подходят: управление, предпринимательство, руководство командами, финансы, недвижимость, администрирование, организация крупных проектов",
+           "Но есть ловушка. Контроль легко становится клеткой: Вы держите все сами. И система кормит всех, кроме Вашей кассы",
+           "Дело не в том, что Вы мало работаете. Ваш порядок может стать Вашим продуктом, а не чужим каркасом, и к этому ведет один конкретный шаг",
+           "Как сделать из порядка свой продукт, Вы увидите в полной карте" ] },
+    5: { title: "Ваш главный талант — превращать знания в пользу",
+         paras: [
+           "Вы собираете разрозненное в систему и объясняете сложное так, что человеку сразу ясно, что делать. К Вам идут не за умным словом, а за направлением",
+           "Вам подходят: преподавание, наставничество, консультирование, образовательные программы, экспертный блог, работа с детьми, социальные проекты",
+           "Но есть ловушка. Чем больше Вы знаете, тем легче копить еще и не продавать. Открытый урок отдает метод целиком, а касса остается пустой",
+           "Дело не в нехватке знаний. Есть точка, где бесплатная польза должна заканчиваться, а продукт начинаться, и у Вас она своя",
+           "Что оставить в открытом доступе, а что перенести в продукт, Вы увидите в полной карте" ] },
+    6: { title: "Ваш главный талант — объединять людей и создавать притяжение",
+         paras: [
+           "Вы располагаете к себе, чувствуете разных людей и находите подход к каждому. Снимаете напряжение, доводите до решения, которое устраивает обе стороны, и создаете атмосферу, в которой хочется остаться",
+           "Вам подходят: продажи, переговоры, работа с клиентами, PR, организация мероприятий, партнерские проекты, создание контента",
+           "Но есть ловушка. Легко всем нравиться и потерять свою рамку: тепло есть, цены нет. Вас любят — и не покупают",
+           "Дело не в том, что Вы не умеете продавать. Тепло и цена совместимы, если знать, где поставить порог",
+           "Как сделать из связи вход с ценой и не потерять тепло, Вы увидите в полной карте" ] },
+    7: { title: "Ваш главный талант — быстро двигаться к результату",
+         paras: [
+           "Вы собираетесь в нужный момент и переходите от сомнений к действию. Сложность Вас скорее включает, чем останавливает. Там, где другим нужна раскачка, у Вас уже маршрут, и за Вами двигается команда",
+           "Вам подходят: управление проектами, предпринимательство, продажи, продвижение, организация мероприятий, запуски, работа с дедлайнами",
+           "Но есть ловушка. Скорость легко становится гонкой. Действий много, а закрепленного продукта мало",
+           "Дело не в темпе. Чтобы напор приносил деньги, а не еще один рывок, нужен один конкретный поворот",
+           "Как из напора сделать кассу, Вы увидите в полной карте" ] },
+    8: { title: "Ваш главный талант — видеть причины и закономерности",
+         paras: [
+           "Вы отделяете эмоции от фактов и замечаете несостыковки, которые другие пропускают. Раскладываете сложное по полочкам и точно понимаете, почему что-то сработало, а что-то нет",
+           "Вам подходят: аналитика, финансы, юриспруденция, аудит, работа с документами, контроль качества, тестирование",
+           "Но есть ловушка. Глаз на ошибку легко становится вечной проверкой. Приговор рынку готов, а своего оффера нет",
+           "Дело не в перфекционизме. Ваша точность может продаваться, а не раздаваться бесплатно, если упаковать ее в правильный формат",
+           "Как сделать из точности разбор, за который платят, а не бесплатную критику, Вы увидите в полной карте" ] },
+    9: { title: "Ваш главный талант — докапываться до сути",
+         paras: [
+           "Вас не устраивает верхний слой. Если тема зацепила, Вы идете глубже большинства: детали, связи, редкие ответы. И становитесь тем, к кому несут сложное",
+           "Вам подходят: исследования, аналитика, программирование, медицина, психология, тексты, узкая экспертиза",
+           "Но есть ловушка. Глубина легко становится вечной подготовкой. Текст только для своих, а вход с улицы так и не появляется",
+           "Дело не в том, что Вы еще не готовы. Суть можно сохранить и при этом дать людям простой порог, и для этого есть свой прием",
+           "Как сохранить глубину и сделать простой вход в Ваш продукт, Вы увидите в полной карте" ] },
+    10: { title: "Ваш главный талант — замечать возможности",
+         paras: [
+           "Вы чувствуете перемену раньше, чем она становится общей. Видите перспективу, нужное знакомство, случайный поворот и сразу понимаете, как сделать из этого ход",
+           "Вам подходят: предпринимательство, маркетинг, продажи, медиа, продюсирование, туризм, динамичные онлайн-проекты",
+           "Но есть ловушка. Окон много, а направления на квартал нет. Возможность сменяет возможность, и закрепленного контура почти не остается",
+           "Дело не в непостоянстве. Из всех окон одно стоит довести до оффера, и выбирать его можно не наугад",
+           "Как выбрать свое окно и довести его до денег, Вы увидите в полной карте" ] },
+    11: { title: "Ваш главный талант — заряжать людей своей силой",
+         paras: [
+           "В Вас есть запас, которым можно делиться: настойчивость, выносливость, темп. Когда дело настоящее, Ваша энергия видна. Вы увлекаете примером и помогаете другим поверить, что можно больше",
+           "Вам подходят: спорт, руководство, предпринимательство, публичная деятельность, продажи, наставничество, организация команд",
+           "Но есть ловушка. Силу легко раздать всем, а свой продукт оставить на остатках. Героизм кормит чужие задачи, а не Вашу кассу",
+           "Дело не в выносливости. Заряд начинает работать на деньги, когда у него появляется свой контур",
+           "Как направить силу в свой продукт и не выгореть, Вы увидите в полной карте" ] },
+    12: { title: "Ваш главный талант — видеть мир иначе",
+         paras: [
+           "Привычный тупик для Вас не приговор, а повод сменить ракурс. Вы находите вариант, который другим не пришел в голову, и умеете быть рядом с человеком без давления",
+           "Вам подходят: психология, реабилитация, творчество, фотография, кино, социальные проекты, консультирование",
+           "Но есть ловушка. Легко помогать всем и откладывать свой продукт. Или так долго смотреть на варианты, что свой ход опаздывает",
+           "Дело не в нерешительности. Другому углу зрения нужны рамка и цена, и тогда он начинает работать на Вас",
+           "Как из другого угла сделать формат с рамкой и ценой, Вы увидите в полной карте" ] }
+  };
+
+  /* =====================================================================
+     2) ССЫЛКИ НА ОПЛАТУ lava.top. Своя ссылка для каждого таланта.
+        Январь = #1 ... декабрь = #12. Если ссылка пустая, берется общая LAVA_URL.
+     ===================================================================== */
+  const LAVA_URLS = {
+    1: "https://app.lava.top/products/6be3d030-4c37-4454-b8d4-60282fbb10ae",
+    2: "https://app.lava.top/products/31494e38-3936-4fa1-aba9-7332a8669d24",
+    3: "https://app.lava.top/products/94ef64ab-c500-463a-830e-6e18c0d22b40",
+    4: "https://app.lava.top/products/b8d2808d-b708-4b1b-a5e1-f71fe9b9734a",
+    5: "https://app.lava.top/products/1b6f9d5a-b651-4d8b-9b6a-25e86d51d220",
+    6: "https://app.lava.top/products/54635398-9f8c-441f-bbc9-4505b5cb4b58",
+    7: "https://app.lava.top/products/dd7380f1-1cc2-487c-b179-05b4f79a0240",
+    8: "https://app.lava.top/products/0ebbdd99-0c04-4e19-a499-18675ac706b3",
+    9: "https://app.lava.top/products/7183ae93-7f20-4d91-846b-dfa3576f533f",
+    10: "https://app.lava.top/products/a5409ef3-89fa-43cc-ab37-05aba1ed8ca5",
+    11: "https://app.lava.top/products/db850371-60e6-4257-bff6-8ec924768bd0",
+    12: "https://app.lava.top/products/6dcec26e-b6cf-4150-b2ae-490e9639a606"
+  };
+  const LAVA_URL = "PASTE_LAVA_TOP_PRODUCT_URL_HERE";
+</script>
+<link rel="preload" href="assets/roboto-condensed.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+  @font-face { font-family: "Roboto Condensed"; src: url("assets/roboto-condensed.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+  @font-face { font-family: "Montserrat"; src: url("assets/montserrat.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+  :root {
+    --olive: #6e6846; --olive-deep: #4a4630; --olive-ink: #2f2c1d;
+    --gold: #c9a24a; --gold-soft: #e3c98d;
+    --cream: #f3ece1; --cream-2: #ebe1d0; --paper: #fbf7f0;
+    --ink: #1e1814; --muted: #6b6255; --line: #ddd0b8;
+    --head: "Roboto Condensed", "Arial Narrow", Arial, sans-serif;
+    --body: "Montserrat", "Segoe UI", Helvetica, Arial, sans-serif;
+    --wrap: 1120px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--cream); color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  img { max-width: 100%; display: block; }
+  a { color: inherit; }
+  .wrap { width: min(var(--wrap), 100% - 40px); margin-inline: auto; }
+  h1, h2, h3 { font-family: var(--head); font-weight: 800; text-transform: uppercase; line-height: 1.04; letter-spacing: .01em; margin: 0; }
+  h2 { font-size: clamp(30px, 4.4vw, 50px); }
+  h2 em, h1 em { font-style: normal; color: var(--gold); }
+  .kicker { font-family: var(--head); font-weight: 600; letter-spacing: .22em; text-transform: uppercase; font-size: 13px; color: var(--gold); display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .kicker::before { content: ""; width: 34px; height: 1px; background: currentColor; }
+  section { padding: clamp(64px, 9vw, 110px) 0; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 18px 34px; border-radius: 2px; background: var(--gold); color: var(--ink); font-family: var(--head); font-weight: 700; font-size: 19px; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; border: 1px solid var(--gold); transition: background .2s, color .2s, transform .1s; }
+  .btn:hover { background: var(--gold-soft); }
+  .btn:active { transform: translateY(1px); }
+  .btn.dark { background: var(--olive-deep); color: var(--cream); border-color: var(--olive-deep); }
+  .btn.dark:hover { background: var(--olive-ink); }
+  .note { font-size: 13px; color: var(--muted); margin-top: 12px; }
+
+  /* top bar */
+  .bar { position: absolute; top: 0; left: 0; right: 0; z-index: 3; }
+  .bar .wrap { display: flex; justify-content: space-between; align-items: center; padding: 22px 0; font-family: var(--head); letter-spacing: .2em; text-transform: uppercase; font-size: 13px; color: var(--cream); }
+  .bar b { color: var(--gold); font-weight: 700; }
+
+  /* hero */
+  .hero { position: relative; background: var(--olive-ink); color: var(--cream); overflow: hidden; padding: 0; }
+  .hero::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 20% 30%, rgba(201,162,74,.12), transparent 60%); pointer-events: none; }
+  .hero .wrap { display: grid; grid-template-columns: 1.1fr .9fr; align-items: end; gap: 40px; min-height: min(860px, 100vh); position: relative; z-index: 1; }
+  .hero-text { padding: 130px 0 90px; }
+  .hero h1 { font-size: clamp(40px, 5.6vw, 74px); }
+  .nw { white-space: nowrap; }
+  .hero .lead { font-size: clamp(17px, 1.6vw, 20px); color: #ddd3c0; max-width: 520px; margin: 26px 0 32px; }
+  .plate { display: inline-block; background: var(--olive); color: var(--cream); font-family: var(--head); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; font-size: clamp(17px, 1.8vw, 22px); padding: 14px 22px; border-left: 3px solid var(--gold); margin-bottom: 34px; }
+  .plate b { color: var(--gold-soft); }
+  .hero-photo { align-self: end; height: 100%; display: flex; align-items: flex-end; }
+  .hero-photo img { width: 100%; max-height: 820px; object-fit: cover; object-position: 85% top; -webkit-mask-image: linear-gradient(to right, transparent 0, #000 24%, #000 97%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 16%, #000 80%, transparent 100%); -webkit-mask-composite: source-in; mask-image: linear-gradient(to right, transparent 0, #000 24%, #000 97%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 16%, #000 80%, transparent 100%); mask-composite: intersect; }
+  .hero-meta { display: flex; gap: 26px; flex-wrap: wrap; margin-top: 30px; font-size: 14px; color: #c9bfab; }
+  .hero-meta span::before { content: "✦ "; color: var(--gold); }
+
+  /* pain */
+  .pain { background: var(--paper); }
+  .pain .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: start; }
+  .pain p { margin: 0 0 16px; color: #3b342c; }
+  .pain .big { font-size: 20px; color: var(--ink); }
+  .bottom-plate { margin-top: 26px; background: var(--olive-deep); color: var(--cream); padding: 18px 24px; font-family: var(--head); font-weight: 700; text-transform: uppercase; letter-spacing: .03em; font-size: 20px; }
+  .bottom-plate b { color: var(--gold-soft); }
+
+  /* what */
+  .what .grid { display: grid; grid-template-columns: .9fr 1.1fr; gap: 60px; align-items: center; }
+  .quote { font-family: var(--head); font-size: clamp(22px, 2.4vw, 30px); line-height: 1.25; color: var(--olive-deep); border-left: 3px solid var(--gold); padding-left: 24px; margin: 28px 0 0; font-weight: 500; }
+  .mock { background: var(--paper); border: 1px solid var(--line); padding: 34px 32px; box-shadow: 0 30px 60px -30px rgba(47,44,29,.35); position: relative; }
+  .mock .tag { font-family: var(--head); font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 18px; }
+  .mock h3 { font-size: 30px; color: var(--olive-deep); margin-bottom: 14px; }
+  .mock p { margin: 0 0 12px; color: #3b342c; font-size: 15px; }
+  .mock .chain { font-family: var(--head); font-size: 17px; color: var(--olive); margin-top: 16px; letter-spacing: .02em; }
+  .mock .sample { position: absolute; top: -14px; right: 20px; background: var(--gold); color: var(--ink); font-family: var(--head); font-weight: 700; font-size: 12px; letter-spacing: .15em; text-transform: uppercase; padding: 6px 12px; }
+
+  /* inside */
+  .inside { background: var(--olive-deep); color: var(--cream); }
+  .inside .head { display: flex; justify-content: space-between; align-items: end; gap: 30px; flex-wrap: wrap; margin-bottom: 46px; }
+  .inside .head p { max-width: 420px; color: #d9cfbb; margin: 0; }
+  .items { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: rgba(227,201,141,.25); border: 1px solid rgba(227,201,141,.25); }
+  .item { background: var(--olive-deep); padding: 28px 26px 30px; }
+  .item .n { font-family: var(--head); font-size: 44px; font-weight: 800; color: var(--gold); line-height: 1; opacity: .9; }
+  .item h3 { font-size: 21px; margin: 14px 0 8px; color: var(--cream); }
+  .item p { margin: 0; font-size: 15px; color: #d0c6b2; }
+
+  /* how */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; margin-top: 46px; }
+  .step { background: var(--paper); border-top: 3px solid var(--gold); padding: 28px 26px; }
+  .step .n { font-family: var(--head); font-weight: 800; font-size: 15px; letter-spacing: .2em; color: var(--olive); }
+  .step h3 { font-size: 22px; margin: 10px 0 10px; }
+  .step p { margin: 0; font-size: 15px; color: #3b342c; }
+
+  /* honest */
+  .honest { background: var(--cream-2); }
+  .honest .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; }
+  .honest ul { list-style: none; padding: 0; margin: 0; }
+  .honest li { padding: 12px 0 12px 30px; border-bottom: 1px solid var(--line); position: relative; }
+  .honest li::before { content: "—"; position: absolute; left: 0; color: var(--gold); font-weight: 700; }
+
+  /* price */
+  .price { background: var(--olive-ink); color: var(--cream); padding: 0; overflow: hidden; }
+  .price .wrap { display: grid; grid-template-columns: 1.1fr .9fr; gap: 40px; align-items: center; }
+  .price-text { padding: 90px 0; }
+  .price h2 { color: var(--cream); }
+  .price ul { list-style: none; padding: 0; margin: 26px 0 30px; }
+  .price li { padding: 7px 0 7px 28px; position: relative; color: #e2d8c5; }
+  .price li::before { content: "✦"; position: absolute; left: 0; color: var(--gold); }
+  .tag-price { display: flex; align-items: baseline; gap: 16px; margin-bottom: 26px; }
+  .tag-price .sum { font-family: var(--head); font-weight: 800; font-size: 64px; color: var(--gold); line-height: 1; }
+  .tag-price .sub { color: #c9bfab; font-size: 15px; }
+  .price-photo img { width: 100%; height: 100%; max-height: 720px; object-fit: cover; }
+  .price .note { color: #b8ad97; }
+
+
+  footer { background: var(--ink); color: #a69c8b; font-size: 13px; padding: 34px 0; }
+  footer .wrap { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  footer a { color: var(--gold-soft); }
+
+  .sticky-buy { display: none; }
+  .dev-warn { position: fixed; right: 12px; bottom: 12px; z-index: 50; background: #8b2e1f; color: #fff; font: 600 12px/1.3 var(--body); padding: 8px 12px; border-radius: 4px; max-width: 260px; }
+
+  @media (max-width: 900px) {
+    body { font-size: 16px; }
+    .hero .wrap { grid-template-columns: 1fr; min-height: 0; gap: 0; }
+    .hero-text { padding: 90px 0 10px; order: 1; }
+    .hero-photo { order: 2; margin: 0 -20px; }
+    .hero-photo img { max-height: 520px; -webkit-mask-composite: source-over; mask-composite: add; -webkit-mask-image: linear-gradient(to bottom, transparent, #000 15%, #000 80%, transparent); mask-image: linear-gradient(to bottom, transparent, #000 15%, #000 80%, transparent); }
+    .pain .grid, .what .grid, .honest .grid, .price .wrap { grid-template-columns: 1fr; gap: 34px; }
+    .items { grid-template-columns: 1fr 1fr; }
+    .steps { grid-template-columns: 1fr; }
+    .price-text { padding: 70px 0 10px; }
+    .price-photo { margin: 0 -20px; }
+    .price-photo img { max-height: 460px; object-position: top; }
+    .sticky-buy { display: flex; opacity: 0; pointer-events: none; transition: opacity .25s; position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 40; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+    .sticky-buy.show { opacity: 1; pointer-events: auto; }
+    footer { padding-bottom: 96px; }
+  }
+  @media (max-width: 560px) {
+    .items { grid-template-columns: 1fr; }
+    .btn { width: 100%; padding: 17px 20px; font-size: 18px; }
+    .hero-meta { gap: 10px 18px; }
+    .bar .wrap { font-size: 11px; }
+    .tag-price .sum { font-size: 54px; }
+  }
+
+  /* ===== v2 additions ===== */
+  .topbar { background: var(--olive-ink); }
+  .topbar .wrap { display: flex; justify-content: space-between; align-items: center; padding: 18px 0; font-family: var(--head); letter-spacing: .2em; text-transform: uppercase; font-size: 13px; color: var(--cream); }
+  .topbar a { text-decoration: none; }
+  .topbar b { color: var(--gold); font-weight: 700; }
+  .topbar .change { color: #cfc5b1; letter-spacing: .08em; }
+  .topbar .change:hover { color: var(--gold-soft); }
+  .talent { background: var(--olive-ink); color: var(--cream); padding-top: clamp(40px, 6vw, 80px); position: relative; overflow: hidden; }
+  .talent::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 15% 20%, rgba(201,162,74,.14), transparent 60%); pointer-events: none; }
+  .talent-grid { display: grid; grid-template-columns: 1.45fr .55fr; gap: 40px; align-items: start; position: relative; z-index: 1; }
+  .talent h1 { font-size: clamp(36px, 5vw, 64px); color: var(--cream); margin-bottom: 26px; }
+  .talent h1 em { color: var(--gold); }
+  .t-text p { margin: 0 0 14px; font-size: 18px; color: #e2d8c5; max-width: 680px; }
+  .t-text b, .t-fields b { color: var(--gold-soft); font-weight: 600; }
+  .t-fields { margin: 8px 0 0; color: #e2d8c5; max-width: 680px; }
+  .cta-main { margin-top: 34px; }
+  .btn.big { font-size: 22px; padding: 22px 46px; box-shadow: 0 14px 40px -12px rgba(201,162,74,.55); }
+  .cta-main .note { color: #c9bfab; font-size: 14px; }
+  .cta-main .note b { color: var(--gold-soft); }
+  .talent-num { text-align: right; font-family: var(--head); font-weight: 800; color: var(--gold); line-height: .9; }
+  .talent-num span { font-size: clamp(110px, 14vw, 200px); display: block; opacity: .9; }
+  .talent-num small { display: block; font-size: 14px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: #c9bfab; margin-top: 10px; }
+  .placeholder { outline: 2px dashed #b3412c; outline-offset: 4px; }
+  .cta-band { background: var(--olive); color: var(--cream); padding: 34px 0; }
+  .cta-band .wrap { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+  .cta-band p { margin: 0; font-family: var(--head); font-weight: 600; font-size: clamp(19px, 2vw, 24px); text-transform: uppercase; letter-spacing: .02em; }
+  .cta-band.final { background: var(--olive-deep); padding: 56px 0; }
+  .bridge { background: var(--paper); }
+  .bridge-card { border: 1px solid var(--line); outline: 1px solid var(--line); outline-offset: 8px; background: #fffdf8; padding: clamp(28px, 5vw, 60px); max-width: 900px; margin: 0 auto; }
+  .bridge-card h2 { font-size: clamp(28px, 3.6vw, 42px); }
+  .bridge-card .lead { font-size: 18px; color: #3b342c; margin: 22px 0 26px; }
+  .bridge-card h3 { font-size: 22px; color: var(--olive-deep); margin: 0 0 10px; }
+  .dash { list-style: none; padding: 0; margin: 0 0 22px; }
+  .dash li { padding: 8px 0 8px 28px; position: relative; font-weight: 600; }
+  .dash li::before { content: "—"; position: absolute; left: 0; color: var(--gold); }
+  .result-plate { margin-top: 26px; background: var(--olive-deep); color: var(--cream); padding: 20px 24px; font-size: 17px; }
+  .result-plate b { color: var(--gold-soft); }
+  .price h2 .pn { font-size: .45em; color: #c9bfab; vertical-align: super; }
+  .tag-price { align-items: center; margin-bottom: 8px; }
+  .tag-price .old { font-family: var(--head); font-size: 30px; color: #a69c8b; }
+  .price .mail { font-family: var(--head); font-weight: 700; font-size: 21px; color: var(--cream); margin: 0 0 26px; }
+  footer { padding: 46px 0 40px; }
+  footer .wrap { flex-direction: column; align-items: center; text-align: center; gap: 14px; }
+  footer .contact { font-family: var(--head); font-size: 22px; color: var(--cream); font-weight: 600; }
+  .t-text { max-width: 720px; }
+  .t-text p.spheres { background: rgba(243,236,225,.06); border-left: 3px solid var(--gold); padding: 14px 18px; color: #e9e0cf; font-size: 16px; }
+  .t-text p.spheres b { color: var(--gold); font-family: var(--head); text-transform: uppercase; letter-spacing: .06em; font-size: 15px; display: block; margin-bottom: 4px; }
+  .t-text p.turn { font-family: var(--head); font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--gold-soft); font-size: 20px; margin-top: 26px; }
+  .t-text p.teaser { margin: 28px 0 0; font-family: var(--head); font-size: 22px; line-height: 1.3; font-weight: 500; color: var(--cream); padding-top: 18px; border-top: 1px solid rgba(201,162,74,.4); }
+  .cta-main { margin-top: 22px; }
+  .talent h1 { font-size: clamp(32px, 4.4vw, 58px); }
+  .t-text p.trap { margin-top: 24px; }
+  .t-text p.trap b { color: var(--gold); font-family: var(--head); text-transform: uppercase; letter-spacing: .04em; font-size: 19px; font-weight: 700; margin-right: 4px; }
+  .t-text p.loop { color: var(--cream); font-style: italic; }
+  .hook-line { background: var(--gold); color: var(--ink); padding: 16px 0; text-align: center; font-family: var(--head); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: clamp(15px, 1.6vw, 19px); }
+  .hook-line span::after { content: " ↓"; }
+  .gap { background: var(--olive-deep); color: var(--cream); }
+  .gap .head { display: flex; justify-content: space-between; align-items: end; gap: 30px; flex-wrap: wrap; margin-bottom: 40px; }
+  .gap .head p { max-width: 430px; color: #d9cfbb; margin: 0; }
+  .gap-list { display: grid; gap: 1px; background: rgba(227,201,141,.25); border: 1px solid rgba(227,201,141,.25); }
+  .gap-item { background: var(--olive-deep); display: grid; grid-template-columns: 80px 1fr; gap: 18px; padding: 24px 26px; align-items: start; }
+  .gap-item .n { font-family: var(--head); font-weight: 800; font-size: 44px; color: var(--gold); line-height: 1; }
+  .gap-item h3 { font-size: 23px; color: var(--cream); margin: 2px 0 6px; }
+  .gap-item p { margin: 0; color: #d0c6b2; font-size: 15px; }
+  .mock .phr { font-family: var(--head); font-size: 18px; color: var(--olive-deep); margin: 0 0 8px; }
+  .mock .tag2 { margin-top: 22px; }
+  .item .lbl { display: inline-block; margin-top: 14px; font-family: var(--head); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink); background: var(--gold); padding: 4px 9px; }
+  .item .lbl.free { background: transparent; color: #c9bfab; border: 1px solid rgba(227,201,141,.4); }
+  .price-sub { font-family: var(--head); text-transform: uppercase; letter-spacing: .1em; color: var(--gold-soft); margin: 22px 0 -10px; font-size: 15px; }
+  @media (max-width: 900px) {
+    .gap-item { grid-template-columns: 52px 1fr; padding: 20px 18px; }
+    .gap-item .n { font-size: 34px; }
+    .t-text p.teaser { font-size: 19px; }
+    .talent-grid { grid-template-columns: 1fr; gap: 0; }
+    .talent-num { order: -1; text-align: left; display: flex; align-items: baseline; gap: 14px; margin-bottom: 10px; }
+    .talent-num span { font-size: 76px; }
+    .talent-num small { margin: 0; }
+    .t-text p { font-size: 16px; }
+    .cta-band .wrap { flex-direction: column; align-items: stretch; text-align: center; }
+    .btn.big { width: 100%; font-size: 20px; padding: 20px; }
+  }
+
+  /* ===== v3: золотая кнопка разбора ===== */
+  .talent-grid { grid-template-columns: 1fr; }
+  .talent-num small { font-size: 13px; }
+  .cta-main { text-align: center; max-width: 720px; }
+  .cta-main .note { max-width: 440px; margin-inline: auto; }
+  .cta-band .wrap { flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 22px; }
+  .price-text { text-align: center; }
+  .price-text .kicker { justify-content: center; }
+  .price-text ul { text-align: left; display: inline-block; }
+  .price-text .tag-price { justify-content: center; }
+  .btn[data-buy] {
+    position: relative; isolation: isolate; overflow: hidden;
+    display: flex; width: fit-content; max-width: 100%; margin-inline: auto; min-height: 64px;
+    padding: 20px 44px; border-radius: 999px;
+    background: linear-gradient(120deg, #f9e7ae 0%, #e8c46c 24%, #c8963a 50%, #e8c46c 76%, #f9e7ae 100%);
+    background-size: 220% 100%; background-position: 0% 50%;
+    border: 1px solid rgba(255, 238, 190, .85); color: #2a1c0b;
+    font-weight: 800; letter-spacing: .07em; text-shadow: 0 1px 0 rgba(255, 248, 225, .55);
+    box-shadow: 0 0 0 0 rgba(236, 196, 104, .6), 0 12px 34px -10px rgba(201, 150, 58, .85), inset 0 1px 0 rgba(255, 255, 255, .7), inset 0 -3px 0 rgba(122, 82, 20, .22);
+    animation: buyGlow 2.6s ease-in-out infinite, buyFlow 6s ease-in-out infinite;
+    -webkit-tap-highlight-color: transparent; transition: transform .15s, filter .2s;
+  }
+  .btn[data-buy]::before {
+    content: ""; position: absolute; z-index: -1; top: -10%; bottom: -10%; left: -70%; width: 45%;
+    background: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, .85) 50%, transparent 100%);
+    transform: skewX(-22deg); animation: buyShine 3.4s ease-in-out infinite;
+  }
+  .btn[data-buy]::after { content: "→"; font-weight: 800; transition: transform .2s; }
+  .btn[data-buy]:hover { background-color: transparent; filter: brightness(1.06) saturate(1.08); transform: translateY(-1px); }
+  .btn[data-buy]:hover::after { transform: translateX(4px); }
+  .btn[data-buy]:active { transform: translateY(1px) scale(.99); }
+  .btn[data-buy]:focus-visible { outline: 3px solid #fff2c6; outline-offset: 3px; }
+  .btn.big[data-buy] { font-size: 22px; padding: 22px 50px; }
+  @keyframes buyGlow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(236, 196, 104, .55), 0 12px 34px -10px rgba(201, 150, 58, .85), inset 0 1px 0 rgba(255, 255, 255, .7), inset 0 -3px 0 rgba(122, 82, 20, .22); }
+    60% { box-shadow: 0 0 0 12px rgba(236, 196, 104, 0), 0 14px 44px -6px rgba(232, 190, 92, .95), inset 0 1px 0 rgba(255, 255, 255, .7), inset 0 -3px 0 rgba(122, 82, 20, .22); }
+  }
+  @keyframes buyFlow { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+  @keyframes buyShine { 0% { left: -70%; } 55%, 100% { left: 135%; } }
+  @media (prefers-reduced-motion: reduce) { .btn[data-buy], .btn[data-buy]::before { animation: none; } }
+  .sticky-buy[data-buy] { display: none; position: fixed; margin: 0; width: auto; transition: opacity .25s, transform .15s, filter .2s; }
+  @media (max-width: 900px) {
+    .talent-num { margin-bottom: 4px; }
+    .cta-main { max-width: none; }
+    .btn[data-buy], .btn.big[data-buy] { width: 100%; max-width: 380px; font-size: 19px; padding: 20px 22px; min-height: 66px; }
+    .sticky-buy[data-buy] { display: flex; max-width: none; font-size: 17px; min-height: 58px; padding: 16px 18px; }
+  }
+
+  /* ===== Темы (?theme=1/2/3). Без параметра работает основная оливковая тема ===== */
+  /* 1. Сливки и золото: светлый первый экран, темные блоки цвета кофе */
+  html[data-theme="1"] { --olive: #8a6a45; --olive-deep: #4a3426; --olive-ink: #2e2019; --gold: #b8892f; --gold-soft: #e2c27d; --cream: #f7f0e4; --cream-2: #efe4d2; --paper: #fcf8f1; --line: #e3d4b8; --muted: #6f604f; }
+  /* 3. Лимон, песок и золото: светлый песочный первый экран, темные блоки цвета листвы */
+  html[data-theme="3"] { --olive: #5c6b2e; --olive-deep: #3f4d1f; --olive-ink: #2b3515; --gold: #c9961c; --gold-soft: #f1d36b; --cream: #fbf5e0; --cream-2: #f3e9c8; --paper: #fffaf0; --line: #e8dbb0; --muted: #6a6448; }
+  /* 2. Изумруд и золото: все темные блоки в глубоком изумруде */
+  html[data-theme="2"] { --olive: #1f5a47; --olive-deep: #123d31; --olive-ink: #0b2a22; --gold: #d4ad55; --gold-soft: #ecd394; --line: #d9ccb0; }
+  html[data-theme="2"] .talent::after { background: radial-gradient(ellipse at 15% 20%, rgba(212,173,85,.16), transparent 60%); }
+
+  html[data-theme="1"] .topbar, html[data-theme="3"] .topbar { border-bottom: 1px solid var(--line); }
+  html[data-theme="1"] .topbar { background: #fbf5ea; }
+  html[data-theme="3"] .topbar { background: #fffbea; }
+  html[data-theme="1"] .topbar .wrap, html[data-theme="3"] .topbar .wrap { color: var(--olive-ink); }
+  html[data-theme="1"] .topbar b { color: #a87b25; }
+  html[data-theme="3"] .topbar b { color: #a87708; }
+  html[data-theme="1"] .topbar .change, html[data-theme="3"] .topbar .change { color: var(--muted); }
+  html[data-theme="1"] .talent { background: linear-gradient(180deg, #fbf5ea 0%, #f3e7d3 100%); color: var(--olive-ink); }
+  html[data-theme="3"] .talent { background: linear-gradient(180deg, #fffbea 0%, #f8edc4 100%); color: var(--olive-ink); }
+  html[data-theme="1"] .talent::after { background: radial-gradient(ellipse at 85% 10%, rgba(226,194,125,.35), transparent 60%); }
+  html[data-theme="3"] .talent::after { background: radial-gradient(ellipse at 85% 8%, rgba(246,214,80,.38), transparent 60%); }
+  html[data-theme="1"] .talent h1, html[data-theme="3"] .talent h1 { color: var(--olive-ink); }
+  html[data-theme="1"] .talent h1 em, html[data-theme="1"] .talent .kicker { color: #a87b25; }
+  html[data-theme="3"] .talent h1 em, html[data-theme="3"] .talent .kicker { color: #a87708; }
+  html[data-theme="1"] .t-text p, html[data-theme="3"] .t-text p { color: #3b2f25; }
+  html[data-theme="3"] .t-text p { color: #333a1f; }
+  html[data-theme="1"] .t-text p.spheres { background: rgba(184,137,47,.09); color: #3b2f25; }
+  html[data-theme="3"] .t-text p.spheres { background: rgba(92,107,46,.08); border-left-color: #5c6b2e; color: #333a1f; }
+  html[data-theme="1"] .t-text p.spheres b, html[data-theme="1"] .t-text p.trap b { color: #a87b25; }
+  html[data-theme="3"] .t-text p.spheres b { color: #5c6b2e; }
+  html[data-theme="3"] .t-text p.trap b { color: #a87708; }
+  html[data-theme="1"] .t-text p.loop, html[data-theme="3"] .t-text p.loop { color: var(--olive-deep); }
+  html[data-theme="1"] .t-text p.teaser, html[data-theme="3"] .t-text p.teaser { color: var(--olive-ink); border-top-color: rgba(168,123,37,.35); }
+  html[data-theme="1"] .cta-main .note, html[data-theme="3"] .cta-main .note, html[data-theme="1"] .talent-num small, html[data-theme="3"] .talent-num small { color: var(--muted); }
+  html[data-theme="1"] .cta-main .note b { color: #a87b25; }
+  html[data-theme="3"] .cta-main .note b { color: #a87708; }
+  html[data-theme="3"] .hook-line { background: #f3d55b; }
+  html[data-theme="1"] .talent .btn[data-buy], html[data-theme="3"] .talent .btn[data-buy] { border: 2px solid #b98a2e; }
+  html[data-theme="1"] .hook-line { background: #e2c27d; }
+
+  /* ===== v4: выгода цены ===== */
+  .deal { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; column-gap: 12px; row-gap: 2px; width: fit-content; max-width: 100%; margin: 16px auto 0; padding: 10px 20px 12px; background: #fffaf0; border: 1px solid #e3cf9f; border-radius: 16px; box-shadow: 0 8px 22px -14px rgba(74,52,38,.45); color: #2e2019; text-align: center; line-height: 1.1; }
+  .deal-badge { background: #b4472e; color: #fff; font: 800 14px/1 var(--head); letter-spacing: .04em; padding: 6px 9px; border-radius: 999px; transform: rotate(-4deg); box-shadow: 0 4px 10px -4px rgba(180,71,46,.6); }
+  .deal-old { font: 600 20px/1 var(--head); color: #8d7f6d; text-decoration: line-through; text-decoration-color: #b4472e; text-decoration-thickness: 2px; }
+  .deal-new { font: 800 36px/1 var(--head); color: #9a6a12; letter-spacing: .01em; }
+  .deal-save { flex-basis: 100%; font: 600 13px/1.3 var(--body); color: #4a3426; margin-top: 6px; letter-spacing: .02em; }
+  .deal-save::before { content: "✦ "; color: #b8892f; }
+  .deal.lg { margin: 18px auto 14px; padding: 16px 26px 18px; border-radius: 20px; column-gap: 16px; }
+  .deal.lg .deal-badge { font-size: 17px; padding: 8px 12px; }
+  .deal.lg .deal-old { font-size: 28px; }
+  .deal.lg .deal-new { font-size: 62px; }
+  .deal.lg .deal-save { font-size: 15px; }
+  .cta-band .deal { margin-top: 0; }
+  .cta-main .note { margin-top: 10px; }
+  .sticky-buy .sb-old { opacity: .6; font-weight: 600; margin-left: 4px; text-decoration-thickness: 2px; }
+  @media (max-width: 560px) {
+    .deal { column-gap: 10px; padding: 10px 16px 12px; }
+    .deal-new { font-size: 34px; }
+    .deal.lg { column-gap: 12px; padding: 14px 18px 16px; }
+    .deal.lg .deal-old { font-size: 24px; }
+    .deal.lg .deal-new { font-size: 50px; }
+    .deal.lg .deal-save { font-size: 14px; }
+  }
+
+  /* ===== v5: блок автора ===== */
+  .author { background: var(--paper); padding: clamp(48px, 7vw, 90px) 0; }
+  .author-card { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: clamp(18px, 4vw, 56px); align-items: center; max-width: 900px; }
+  .author-photo img { width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 22px; box-shadow: 0 22px 44px -22px rgba(46,32,25,.55); outline: 1px solid var(--line); outline-offset: 6px; }
+  .author-text .kicker { margin-bottom: 10px; }
+  .author-text h2 { font-size: clamp(34px, 4vw, 48px); color: var(--olive-ink); }
+  .author-role { font-family: var(--head); text-transform: uppercase; letter-spacing: .08em; font-size: 14px; color: var(--gold); margin: 8px 0 14px; font-weight: 600; }
+  .author-text p:last-child { margin: 0; color: #3b2f25; font-size: 17px; }
+  @media (max-width: 560px) {
+    .author-card { grid-template-columns: 40% 1fr; gap: 16px; align-items: center; }
+    .author-photo img { border-radius: 16px; outline-offset: 4px; }
+    .author-text .kicker { font-size: 11px; letter-spacing: .16em; gap: 8px; margin-bottom: 6px; }
+    .author-text .kicker::before { width: 18px; }
+    .author-text h2 { font-size: 30px; }
+    .author-role { font-size: 11.5px; letter-spacing: .05em; margin: 4px 0 8px; line-height: 1.3; }
+    .author-text p:last-child { font-size: 14px; line-height: 1.45; }
+  }
+
+  /* ===== v6: правки 9 октября ===== */
+  /* яркое золото на темных фонах */
+  .gap, .inside, .price, .cta-band, footer, .result-plate, .bottom-plate { --gold: #f3c95a; --gold-soft: #fadf97; }
+  .buy { display: flex; flex-direction: column; align-items: center; width: 100%; }
+  .buy .deal { margin: 0 auto 16px; }
+  .buy .deal.lg { margin: 18px auto 18px; }
+  .buy-note { margin: 14px auto 0; max-width: 440px; font-size: 13px; line-height: 1.55; color: var(--muted); text-align: center; }
+  .buy-note a { color: #9a6a12; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+  .cta-band .buy-note, .price .buy-note { color: #d9cdb6; }
+  .cta-band p.buy-note { font-family: var(--body); font-weight: 400; font-size: 13px; text-transform: none; letter-spacing: 0; line-height: 1.55; margin: 14px auto 0; }
+  .cta-band .buy-note a, .price .buy-note a { color: var(--gold-soft); }
+  .cta-band .wrap > p { max-width: 640px; }
+  .cta-main { margin-top: 30px; }
+  .map .result-plate { margin-top: 26px; background: rgba(0,0,0,.18); border-left: 3px solid var(--gold); }
+  .gap-item .lbl { display: inline-block; margin-top: 10px; font-family: var(--head); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink); background: var(--gold); padding: 4px 9px; }
+  .gap-item .lbl.free { background: transparent; color: #e6d9bf; border: 1px solid rgba(250,223,151,.5); }
+  .price .wrap { grid-template-columns: 1fr; max-width: 720px; }
+  .price-text { padding: clamp(64px, 9vw, 100px) 0; }
+  .price-text #p-num { font-size: 15px; letter-spacing: .2em; }
+  .author-text h2 { font-size: clamp(30px, 3.6vw, 44px); text-transform: none; letter-spacing: 0; }
+  .author-nick { margin: 4px 0 0; font-family: var(--head); font-size: 18px; color: var(--olive-deep); font-weight: 600; }
+  .author-role { margin: 10px 0 2px; }
+  .author-role2 { margin: 0 0 14px; font-size: 14px; color: var(--muted); }
+  .author-text p.author-about { margin: 0; color: #3b2f25; font-size: 17px; }
+  @media (max-width: 560px) {
+    .author-text h2 { font-size: 21px; word-break: break-word; }
+    .author-nick { font-size: 15px; }
+    .author-role { font-size: 12px; margin: 6px 0 2px; }
+    .author-role2 { font-size: 12px; line-height: 1.35; margin-bottom: 8px; }
+    .author-text p.author-about { font-size: 14px; line-height: 1.45; }
+  }
+
+  /* ===== превью: темные блоки шалфей (?theme=sage) ===== */
+  html[data-dark="sage"] { --olive: #5f6d55; --olive-deep: #4a5743; --olive-ink: #36412f; }
+  html[data-dark="sage"] footer { background: #2c3527; }
+  html[data-dark="sage"] .author-nick { color: #4a5743; }
+
+  /* ===== шалфей по умолчанию: крупнее и светлее текст на темных блоках ===== */
+  html[data-dark="sage"] { --dark-text: #f7f3e8; }
+  html[data-dark="sage"] .gap .head p, html[data-dark="sage"] .gap-item p, html[data-dark="sage"] .price li,
+  html[data-dark="sage"] .result-plate, html[data-dark="sage"] .bottom-plate, html[data-dark="sage"] .cta-band p,
+  html[data-dark="sage"] footer, html[data-dark="sage"] footer .contact { color: var(--dark-text); }
+  html[data-dark="sage"] .gap .head p { font-size: 18px; line-height: 1.6; }
+  html[data-dark="sage"] .gap-item p { font-size: 17px; line-height: 1.55; }
+  html[data-dark="sage"] .gap-item .lbl { font-size: 13px; }
+  html[data-dark="sage"] .gap-item .lbl.free { color: var(--dark-text); border-color: rgba(247,243,232,.6); }
+  html[data-dark="sage"] .result-plate { font-size: 18px; }
+  html[data-dark="sage"] .price li { font-size: 18px; }
+  html[data-dark="sage"] .price-sub { font-size: 16px; }
+  html[data-dark="sage"] .cta-band .buy-note, html[data-dark="sage"] .price .buy-note,
+  html[data-dark="sage"] .cta-band p.buy-note { color: var(--dark-text); font-size: 15px; max-width: 480px; }
+  html[data-dark="sage"] footer { font-size: 15px; }
+  html[data-dark="sage"] footer .small { color: rgba(247,243,232,.82); }
+  @media (max-width: 900px) {
+    html[data-dark="sage"] .gap .head p, html[data-dark="sage"] .gap-item p, html[data-dark="sage"] .price li { font-size: 17px; }
+    html[data-dark="sage"] .result-plate { font-size: 17px; }
+    html[data-dark="sage"] .cta-band .buy-note, html[data-dark="sage"] .price .buy-note, html[data-dark="sage"] .cta-band p.buy-note { font-size: 15px; }
+  }
+
+  /* sticky: в одну строку и по ширине экрана */
+  @media (max-width: 900px) {
+    .sticky-buy[data-buy] { width: auto; left: 12px; right: 12px; max-width: none; white-space: nowrap; font-size: 15px; letter-spacing: .04em; gap: 6px; padding: 14px 16px; min-height: 56px; }
+    .sticky-buy[data-buy]::after { margin-left: 2px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar"><div class="wrap"><span class="brand"><b>Сфера</b> таланта</span><span class="change">Разбор по дате рождения</span></div></header>
+
+<section class="talent" id="talent">
+  <div class="wrap talent-grid">
+    <div class="talent-text">
+      <h1 id="t-name">Ваш талант</h1>
+      <div id="t-text" class="t-text"></div>
+      <div class="cta-main"><div class="buy"><div class="deal"><span class="deal-badge">−60%</span><s class="deal-old">2499 ₽</s><b class="deal-new">990 ₽</b><span class="deal-save">цена со скидкой · экономия 1509 ₽</span></div><a class="btn big" data-buy href="#price">Узнать полный разбор</a><p class="buy-note">Персональная карта реализации в PDF · файл придет на почту после оплаты<br>По всем вопросам: <a href="mailto:text-pro@list.ru">text-pro@list.ru</a></p></div></div>
+    </div>
+  </div>
+</section>
+
+<div class="hook-line"><div class="wrap"><span>Это была бесплатная часть. Дальше то, чего в ней нет</span></div></div>
+
+<section class="pain">
+  <div class="wrap grid">
+    <div>
+      <div class="kicker">Это объясняет, почему</div>
+      <h2>Талант есть, <em>а денег пока нет</em></h2>
+    </div>
+    <div>
+      <p class="big">Вы узнали, в чем Ваша сила и где ловушка. Но главный вопрос остался открытым: как именно этот талант превращается в деньги.</p>
+      <p>Можно годами знать, что Вы талантливы, и при этом продавать не то, подавать себя не тем тоном и раз за разом наступать в одну и ту же ловушку. Не потому, что Вы мало стараетесь, а потому, что у таланта нет маршрута.</p>
+      <div class="bottom-plate">Вот где обычно теряются деньги: <b>между талантом и тем, что Вы продаете</b></div>
+    </div>
+  </div>
+</section>
+
+<section class="gap map" id="map">
+  <div class="wrap">
+    <div class="head">
+      <div><div class="kicker">9 разделов Вашей карты</div><h2>Ваш талант может приносить деньги. <em>Знаете ли Вы, как именно?</em></h2></div>
+      <p>Бесплатно Вы увидели только часть: талант, подходящие сферы и ловушку. В Персональной карте реализации 9 разделов, и вот что в каждом.</p>
+    </div>
+    <div class="gap-list">
+      <div class="gap-item"><div class="n">01</div><div><h3>Главный ресурс</h3><p>Что включает Вашу энергию и в какой среде Ваш талант работает сильнее всего.</p><span class="lbl free">Частично в бесплатной части</span></div></div>
+      <div class="gap-item"><div class="n">02</div><div><h3>В чем сила</h3><p>Ваша сильная цепочка действий: как Вы естественным образом приходите к результату.</p><span class="lbl">Только в карте</span></div></div>
+      <div class="gap-item"><div class="n">03</div><div><h3>Где применять талант и где деньги</h3><p>Задачи и сферы, где Ваш ресурс особенно востребован, и Ваша денежная модель по шагам.</p><span class="lbl free">Частично в бесплатной части</span></div></div>
+      <div class="gap-item"><div class="n">04</div><div><h3>Как проявлять себя</h3><p>Позиция и готовые фразы, с которыми можно выходить в блог и в продажи.</p><span class="lbl">Только в карте</span></div></div>
+      <div class="gap-item"><div class="n">05</div><div><h3>Почему талант может не кормить</h3><p>Ваши ловушки и то, где Вы сами обнуляете свою сильную сторону.</p><span class="lbl free">Частично в бесплатной части</span></div></div>
+      <div class="gap-item"><div class="n">06</div><div><h3>Принцип и переключатель</h3><p>Вопросы и конкретный ход на тот момент, когда срабатывает Ваша ловушка.</p><span class="lbl">Только в карте</span></div></div>
+      <div class="gap-item"><div class="n">07</div><div><h3>Денежные форматы</h3><p>В каких продуктах Ваш талант продается лучше всего.</p><span class="lbl">Только в карте</span></div></div>
+      <div class="gap-item"><div class="n">08</div><div><h3>Контент-план на 7 дней</h3><p>Тема и задание на каждый день недели под Ваш тип таланта.</p><span class="lbl">Только в карте</span></div></div>
+      <div class="gap-item"><div class="n">09</div><div><h3>Ключ</h3><p>Итог: в чем Ваша сила и какой у Вас следующий уровень.</p><span class="lbl">Только в карте</span></div></div>
+    </div>
+    <div class="result-plate">В результате у Вас будет понимание: <b>где находятся именно Ваши деньги и как к ним прийти через собственные сильные стороны</b></div>
+  </div>
+</section>
+
+<div class="cta-band"><div class="wrap"><p>Все 9 разделов уже собраны в Вашей карте</p><div class="buy"><a class="btn" data-buy href="#price">Узнать полный разбор</a><p class="buy-note">Персональная карта реализации в PDF · файл придет на почту после оплаты<br>По всем вопросам: <a href="mailto:text-pro@list.ru">text-pro@list.ru</a></p></div></div></div>
+
+<section class="how">
+  <div class="wrap">
+    <div class="kicker">Как получить</div>
+    <h2>Первый шаг Вы <em>уже сделали</em></h2>
+    <div class="steps">
+      <div class="step"><div class="n">ШАГ 1 · ГОТОВО</div><h3>Узнайте свой талант</h3><p>По дате рождения определился Ваш главный талант.</p></div>
+      <div class="step"><div class="n">ШАГ 2</div><h3>Оплатите разбор</h3><p>Нажмите «Узнать полный разбор». Откроется защищенная страница оплаты lava.top: российская карта или СБП, 990 ₽.</p></div>
+      <div class="step"><div class="n">ШАГ 3</div><h3>Получите PDF на почту</h3><p>Файл придет на почту, которую Вы укажете при оплате. Изучаете его в своем темпе и сразу берете контент-план в работу.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="price" id="price">
+  <div class="wrap">
+    <div class="price-text">
+      <div class="kicker" id="p-num">#1</div>
+      <h2>Персональная карта <em>реализации</em></h2>
+      <p class="price-sub">Что Вы узнаете в карте:</p>
+      <ul>
+        <li>Ваша денежная модель: где и как талант приносит деньги</li>
+        <li>Как подавать себя, с готовыми фразами</li>
+        <li>Ваш переключатель на случай ловушки</li>
+        <li>Денежные форматы для Вашего таланта</li>
+        <li>Контент-план на 7 дней с заданиями</li>
+        <li>Ключ: итог и Ваш следующий уровень</li>
+      </ul>
+      <div class="buy"><div class="deal lg"><span class="deal-badge">−60%</span><s class="deal-old">2499 ₽</s><b class="deal-new">990 ₽</b><span class="deal-save">цена со скидкой · экономия 1509 ₽</span></div><a class="btn" data-buy href="#price">Узнать полный разбор</a><p class="buy-note">Персональная карта реализации в PDF · файл придет на почту после оплаты<br>По всем вопросам: <a href="mailto:text-pro@list.ru">text-pro@list.ru</a></p></div>
+    </div>
+  </div>
+</section>
+
+<section class="author" id="author">
+  <div class="wrap author-card">
+    <div class="author-photo"><picture><source srcset="assets/lana-author.webp" type="image/webp"><img src="assets/lana-author.jpg" alt="@samoprodvigator, автор проекта «Сфера таланта»" width="800" height="1000" loading="lazy"></picture></div>
+    <div class="author-text">
+      <div class="kicker">Автор проекта</div>
+      <h2>@samoprodvigator</h2>
+      <p class="author-nick">Самопродвигатор</p>
+      <p class="author-role">практикующий астролог, контент-маркетолог</p>
+      <p class="author-role2">Сфера таланта · разбор по дате рождения</p>
+      <p class="author-about">Я собрала Персональную карту реализации, чтобы Вы увидели свой талант и поняли, как превратить его в деньги через собственные сильные стороны.</p>
+    </div>
+  </div>
+</section>
+
+<div class="cta-band final"><div class="wrap"><p>Ваш талант уже есть. Осталось понять, как он начнет приносить деньги</p><div class="buy"><a class="btn" data-buy href="#price">Узнать полный разбор</a><p class="buy-note">Персональная карта реализации в PDF · файл придет на почту после оплаты<br>По всем вопросам: <a href="mailto:text-pro@list.ru">text-pro@list.ru</a></p></div></div></div>
+
+<footer>
+  <div class="wrap">
+    <div class="contact">По всем вопросам: <a href="mailto:text-pro@list.ru">text-pro@list.ru</a></div>
+    <div class="small">© Лана · Сфера таланта · Визуал проекта создан с помощью ИИ</div>
+  </div>
+</footer>
+
+<a class="btn sticky-buy" data-buy href="#price">Узнать полный разбор · <s class="sb-old">2499</s>&nbsp;990 ₽</a>
+
+<script>
+  (function () {
+    var MONTHS = ["январе","феврале","марте","апреле","мае","июне","июле","августе","сентябре","октябре","ноябре","декабре"];
+    var mm = parseInt((new URLSearchParams(location.search).get("m") || ""), 10);
+    if (!(mm >= 1 && mm <= 12)) { location.replace("index.html"); return; }
+    var t = TALENTS[mm] || {};
+    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+        document.getElementById("p-num").textContent = "#" + mm;
+    var title = String(t.title || ("Ваш главный талант — #" + mm)).replace(/\.\s*$/, "");
+    var cut = title.indexOf("—");
+    document.getElementById("t-name").innerHTML = cut > -1
+      ? esc(title.slice(0, cut + 1)) + " <em>" + esc(title.slice(cut + 1).trim()) + "</em>"
+      : esc(title);
+    document.title = title + " · Сфера таланта";
+    var paras = (t.paras || []).filter(Boolean), last = paras.length - 1;
+    document.getElementById("t-text").innerHTML = paras.map(function (p, i) {
+      var sm = p.match(/^((?:Поэтому )?Вам (?:особенно )?подходят:|Подходящие сферы:)\s*([\s\S]*)$/);
+      if (sm) return '<p class="spheres"><b>' + esc(sm[1]) + "</b> " + esc(sm[2]) + "</p>";
+      if (i === last && /в полной карте/.test(p)) return '<p class="teaser">' + esc(p) + "</p>";
+      if (/^Но именно здесь возникает парадокс\.?$/.test(p)) return '<p class="turn">' + esc(p) + "</p>";
+      var tm = p.match(/^(Но есть ловушка\.)\s*([\s\S]*)$/);
+      if (tm) return '<p class="trap"><b>' + esc(tm[1]) + "</b> " + esc(tm[2]) + "</p>";
+      if (/^Дело не в /.test(p)) return '<p class="loop">' + esc(p) + "</p>";
+      return "<p>" + esc(p) + "</p>";
+    }).join("");
+
+    var re = /^https:\/\/([a-z0-9-]+\.)*lava\.top\//i;
+    var url = re.test(LAVA_URLS[mm] || "") ? LAVA_URLS[mm] : (re.test(LAVA_URL) ? LAVA_URL : "");
+    document.querySelectorAll("[data-buy]").forEach(function (a) {
+      if (url) { a.href = url; a.removeAttribute("target"); a.addEventListener("click", function (e) { e.preventDefault(); window.location.href = url; }); }
+    });
+    if (!url && !/[?&]preview\b/.test(location.search)) {
+      var w = document.createElement("div");
+      w.className = "dev-warn";
+      w.textContent = "Ссылка на оплату для таланта #" + mm + " не подключена: заполните LAVA_URLS или LAVA_URL в начале talent.html";
+      document.body.appendChild(w);
+    }
+    var sb = document.querySelector(".sticky-buy"), price = document.getElementById("price"), top = document.getElementById("talent");
+    function onScroll() {
+      var pr = price.getBoundingClientRect(), tr = top.getBoundingClientRect();
+      sb.classList.toggle("show", tr.bottom < 0 && !(pr.top < window.innerHeight && pr.bottom > 0));
+    }
+    window.addEventListener("scroll", onScroll, { passive: true }); onScroll();
+    var TC = { "sage": "#fbf5ea", "0": "#2f2c1d", "1": "#fbf5ea", "2": "#0b2a22", "3": "#fffbea" }, th = window.SITE_THEME;
+    if (th && TC[th]) document.querySelector('meta[name="theme-color"]').setAttribute("content", TC[th]);
+    var back = document.querySelector(".topbar .brand");
+    if (back) { back.style.cursor = "pointer"; back.addEventListener("click", function () { location.href = "index.html" + (window.SITE_THEME !== "sage" ? "?theme=" + window.SITE_THEME : ""); }); }
+  })();
+</script>
+</body>
+</html>

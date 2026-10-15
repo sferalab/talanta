@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Сфера таланта · Узнайте свой талант по дате рождения</title>
+<meta name="description" content="Узнайте свой способ создавать ценность и монетизировать свои сильные стороны. Введите дату рождения.">
+<meta property="og:title" content="Узнайте свой способ создавать ценность и монетизировать свои сильные стороны">
+<meta property="og:image" content="assets/lemon-tree.jpg">
+<meta name="theme-color" content="#fbf5ea">
+<script>
+  /* Тема оформления. Основная: sage (сливки + шалфей + золото). ?theme=1 сливки + кофе, ?theme=0 оливковая, ?theme=2 изумруд, ?theme=3 лимон. */
+  (function () {
+    var t = (new URLSearchParams(location.search).get("theme") || "").trim();
+    if (!/^([0123]|sage)$/.test(t)) t = "sage";
+    if (t === "sage") { document.documentElement.setAttribute("data-theme", "1"); document.documentElement.setAttribute("data-dark", "sage"); }
+    else if (t !== "0") document.documentElement.setAttribute("data-theme", t);
+    window.SITE_THEME = t;
+  })();
+</script>
+<link rel="preload" href="assets/cormorant.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+  @font-face { font-family: "Roboto Condensed"; src: url("assets/roboto-condensed.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+  @font-face { font-family: "Cormorant"; src: url("assets/cormorant.woff2") format("woff2"); font-weight: 300 700; font-display: swap; }
+  @font-face { font-family: "Montserrat"; src: url("assets/montserrat.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: #fff; color: #1e1814; font-family: "Montserrat", "Segoe UI", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+  main { min-height: 100vh; min-height: 100svh; display: grid; place-items: center; padding: 32px 20px; }
+  .box { width: min(1040px, 100%); display: grid; grid-template-columns: 1.1fr .9fr; align-items: center; gap: 48px; }
+  h1 { font-family: "Roboto Condensed", "Arial Narrow", Arial, sans-serif; font-weight: 700; font-size: clamp(30px, 4vw, 46px); line-height: 1.1; margin: 0 0 34px; letter-spacing: .005em; }
+  form { display: flex; gap: 12px; flex-wrap: wrap; }
+  input { flex: 1 1 220px; min-width: 0; height: 56px; padding: 0 18px; font: 500 19px/1 "Montserrat", Arial, sans-serif; letter-spacing: .06em; border: 1px solid #d9d4cb; border-radius: 10px; background: #fff; color: #1e1814; outline: none; transition: border-color .2s, box-shadow .2s; }
+  input::placeholder { color: #b9b2a6; letter-spacing: .06em; }
+  input:focus { border-color: #6e6846; box-shadow: 0 0 0 3px rgba(110,104,70,.15); }
+  input.bad { border-color: #b3412c; box-shadow: 0 0 0 3px rgba(179,65,44,.12); }
+  button { height: 56px; padding: 0 34px; border: 0; border-radius: 10px; background: #111; color: #fff; font: 700 17px/1 "Roboto Condensed", Arial, sans-serif; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; transition: background .2s, transform .1s; }
+  button:hover { background: #4a4630; }
+  button:active { transform: translateY(1px); }
+  .err { min-height: 22px; margin-top: 10px; color: #b3412c; font-size: 14px; }
+  .help { font-size: 13px; color: #8a8276; margin-top: 2px; }
+  .tree { display: flex; justify-content: center; }
+  .tree img { width: min(360px, 100%); height: auto; display: block; mix-blend-mode: multiply; }
+  @media (max-width: 760px) {
+    main { place-items: start center; padding-top: 28px; }
+    .box { grid-template-columns: 1fr; gap: 8px; text-align: left; }
+    .tree { order: -1; }
+    .tree img { width: min(210px, 55vw); }
+    h1 { margin-bottom: 24px; }
+    button { flex: 1 1 100%; }
+  }
+  /* ===== Темы (?theme=1/2/3) ===== */
+  html[data-theme="1"] body { background: #fbf5ea; color: #2e2019; }
+  html[data-theme="1"] button { background: #4a3426; }
+  html[data-theme="1"] button:hover { background: #2e2019; }
+  html[data-theme="1"] input { border-color: #e3d4b8; background: #fffdf8; }
+  html[data-theme="2"] body { background: #f4f1e8; color: #0b2a22; }
+  html[data-theme="2"] button { background: #123d31; }
+  html[data-theme="2"] button:hover { background: #0b2a22; }
+  html[data-theme="2"] input:focus { border-color: #1f5a47; box-shadow: 0 0 0 3px rgba(31,90,71,.15); }
+  html[data-theme="3"] body { background: #fffbea; color: #2b3515; }
+  html[data-theme="3"] button { background: #3f4d1f; }
+  html[data-theme="3"] button:hover { background: #2b3515; }
+  html[data-theme="3"] input { border-color: #ecdfae; background: #fffef7; }
+  html[data-theme="3"] input:focus { border-color: #5c6b2e; box-shadow: 0 0 0 3px rgba(92,107,46,.15); }
+
+  /* ===== v6: элегантный заголовок и золотая кнопка ===== */
+  h1 { font-family: "Cormorant", "Playfair Display", Georgia, "Times New Roman", serif; font-weight: 600; font-size: clamp(34px, 4.6vw, 54px); line-height: 1.08; letter-spacing: 0; color: #2e2019; }
+  #f button {
+    position: relative; isolation: isolate; overflow: hidden; height: 58px; border-radius: 999px;
+    background: linear-gradient(120deg, #f9e7ae 0%, #e8c46c 24%, #c8963a 50%, #e8c46c 76%, #f9e7ae 100%);
+    background-size: 220% 100%; border: 1px solid #c49038; color: #2a1c0b; font-weight: 800; letter-spacing: .1em;
+    text-shadow: 0 1px 0 rgba(255,248,225,.55);
+    box-shadow: 0 10px 26px -10px rgba(201,150,58,.85), inset 0 1px 0 rgba(255,255,255,.7), inset 0 -3px 0 rgba(122,82,20,.22);
+    animation: goldFlow 6s ease-in-out infinite;
+  }
+  #f button::before { content: ""; position: absolute; z-index: -1; top: -10%; bottom: -10%; left: -70%; width: 45%; background: linear-gradient(100deg, transparent, rgba(255,255,255,.85), transparent); transform: skewX(-22deg); animation: goldShine 3.4s ease-in-out infinite; }
+  #f button:hover { background-color: transparent; filter: brightness(1.06); }
+  @keyframes goldFlow { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+  @keyframes goldShine { 0% { left: -70%; } 55%, 100% { left: 135%; } }
+  @media (prefers-reduced-motion: reduce) { #f button, #f button::before { animation: none; } }
+  input { border-radius: 999px; padding: 0 22px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="box">
+    <div>
+      <h1>Узнайте свой способ создавать ценность и монетизировать свои сильные стороны</h1>
+      <form id="f" novalidate>
+        <input id="d" type="text" inputmode="numeric" autocomplete="bday" placeholder="дд.мм.гггг" maxlength="10" aria-label="Дата рождения в формате дд.мм.гггг" required>
+        <button type="submit">Узнать</button>
+      </form>
+      <div class="err" id="e" role="alert"></div>
+      <div class="help">Дата нигде не сохраняется, мы используем ее только для расчета</div>
+    </div>
+    <div class="tree"><picture><source srcset="assets/lemon-tree.webp" type="image/webp"><img src="assets/lemon-tree.jpg" alt="Лимонное дерево" width="762" height="1074"></picture></div>
+  </div>
+</main>
+<script>
+  (function () {
+    var f = document.getElementById("f"), d = document.getElementById("d"), e = document.getElementById("e");
+    d.addEventListener("input", function () {
+      var x = d.value.replace(/\D/g, "").slice(0, 8);
+      d.value = x.length > 4 ? x.slice(0, 2) + "." + x.slice(2, 4) + "." + x.slice(4)
+              : x.length > 2 ? x.slice(0, 2) + "." + x.slice(2) : x;
+      d.classList.remove("bad"); e.textContent = "";
+    });
+    f.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var m = d.value.trim().match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+      if (!m) return fail("Введите дату рождения в формате дд.мм.гггг");
+      var day = +m[1], mon = +m[2], yr = +m[3], dt = new Date(yr, mon - 1, day), now = new Date();
+      var real = dt.getFullYear() === yr && dt.getMonth() === mon - 1 && dt.getDate() === day;
+      if (!real || yr < 1900 || dt > now) return fail("Проверьте дату: такой даты нет");
+      location.href = "talent.html?m=" + m[2] + (window.SITE_THEME !== "sage" ? "&theme=" + window.SITE_THEME : "");
+    });
+    function fail(t) { e.textContent = t; d.classList.add("bad"); d.focus(); }
+  })();
+</script>
+</body>
+</html>
